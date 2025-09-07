@@ -9,3 +9,5 @@ output "private_subnet_ids" {
     aws_subnet.jmccoytesting_privatesubnet_b.id
   ]
 }
+output "private_subnet_id_a" { value = aws_subnet.jmccoytesting_privatesubnet_a.id }
+output "private_subnet_id_b" { value = aws_subnet.jmccoytesting_privatesubnet_b.id }

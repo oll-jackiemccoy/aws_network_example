@@ -24,3 +24,8 @@ variable "tags" {
   type        = map(string)
   default     = { Project = "tofu-learning" }
 }
+variable "peer_vpc_id" {
+  description = "Peer VPC ID to connect to"
+  type        = string
+  default     = "vpc-031bfafccd6c753ed"
+}
