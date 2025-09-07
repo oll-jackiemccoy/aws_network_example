@@ -14,6 +14,11 @@ variable "private_subnet_cidrs" {
   type        = list(string)
   default     = ["10.67.0.0/23", "10.67.2.0/23"]
 }
+variable "dhcp_domain_name_servers" {
+  description = "DHCP option: domain-name-servers"
+  type        = list(string)
+  default     = ["AmazonProvidedDNS"]  # AWS VPC resolver
+}
 variable "tags" {
   description = "Common resource tags"
   type        = map(string)
