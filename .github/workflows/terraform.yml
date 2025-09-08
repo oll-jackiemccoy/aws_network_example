@@ -1,0 +1,109 @@
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
+  workflow_dispatch:
+
+permissions:
+  id-token: write     # required for OIDC to AWS
+  contents: read
+  pull-requests: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  fmt_validate:
+    name: Format & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+      - name: Cache Terraform
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform
+            ~/.terraform.d/plugin-cache
+            .terraform.lock.hcl
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf*') }}
+      - name: terraform fmt (check)
+        run: terraform fmt -check -recursive
+      - name: terraform init
+        run: terraform init -upgrade
+      - name: terraform validate
+        run: terraform validate
+
+  plan:
+    name: Plan
+    needs: fmt_validate
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform init
+        run: terraform init -upgrade
+      - name: terraform plan
+        run: terraform plan -out=tfplan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+      - name: Post plan summary to PR
+        if: github.event_name == 'pull_request'
+        run: |
+          terraform show -no-color tfplan | sed -n '1,200p' > plan.txt
+          printf "### Terraform Plan\n\n\`\`\`\n" > plan.md
+          cat plan.txt >> plan.md
+          printf "\n\`\`\`\n" >> plan.md
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: plan.md
+
+  apply:
+    name: Apply (manual approval)
+    if: github.ref == 'refs/heads/main'
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: prod   # gate with reviewers in Settings → Environments
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: .
+      - name: terraform apply
+        run: terraform apply -auto-approve tfplan
