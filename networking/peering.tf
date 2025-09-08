@@ -2,11 +2,6 @@ data "aws_vpc" "peer" {
   id = var.peer_vpc_id
 }
 
-# Discover peer CIDR (works when you have permission to DescribeVpcs on the peer)
-data "aws_vpc" "workspaces-vpc" {
-  id = var.peer_vpc_id
-}
-
 # Create the peering connection (auto-accept if same account & region)
 resource "aws_vpc_peering_connection" "jmccoytesting_peer" {
   vpc_id      = aws_vpc.jmccoytesting_opentofu_vpc.id 
@@ -36,7 +31,11 @@ resource "aws_route" "to_peer_private_b" {
   destination_cidr_block    = data.aws_vpc.peer.cidr_block
   vpc_peering_connection_id = aws_vpc_peering_connection.jmccoytesting_peer.id
 }
-
+resource "aws_route" "peer_to_workspace" {
+  route_table_id              = "rtb-077fd3a6105e4463e"
+  destination_cidr_block      = var.vpc_cidr
+  vpc_peering_connection_id   = aws_vpc_peering_connection.jmccoytesting_peer.id
+}
 output "vpc_peering_connection_id" {
   value       = aws_vpc_peering_connection.jmccoytesting_peer.id
   description = "Peering connection ID"
