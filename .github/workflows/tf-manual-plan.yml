@@ -1,0 +1,26 @@
+name: Terraform (Manual Plan)
+
+on:
+  workflow_dispatch: {}  # button-only
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      # keeps this super safe: doesn't touch your backend or cloud
+      - name: terraform init (no backend)
+        run: terraform init -backend=false
+
+      - name: terraform fmt (check)
+        run: terraform fmt -recursive -check
+
+      - name: terraform validate
+        run: terraform validate
+
+      - name: terraform plan (no backend)
+        run: terraform plan -input=false -lock=false -no-color
