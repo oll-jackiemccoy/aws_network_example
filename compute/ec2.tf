@@ -7,8 +7,8 @@ resource "aws_instance" "jmccoytesting_ec2_linux" {
   key_name                    = var.key_name
   associate_public_ip_address = false
 
-  tags = {Name = "jmccoytesting_ec2_linux"}
- 
+  tags = { Name = "jmccoytesting_ec2_linux" }
+
 }
 resource "aws_instance" "jmccoytesting_ec2_windows" {
   ami                         = data.aws_ssm_parameter.win2019.value
@@ -19,6 +19,6 @@ resource "aws_instance" "jmccoytesting_ec2_windows" {
   key_name                    = var.key_name
   associate_public_ip_address = false
 
-  tags = {Name = "jmccoytesting-ec2-windows"}
- 
+  tags = { Name = "jmccoytesting-ec2-windows" }
+
 }

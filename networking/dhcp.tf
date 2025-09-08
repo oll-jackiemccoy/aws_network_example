@@ -10,5 +10,5 @@ resource "aws_vpc_dhcp_options_association" "jmccoytesting_dhcp_assoc" {
   vpc_id          = aws_vpc.jmccoytesting_opentofu_vpc.id
   dhcp_options_id = aws_vpc_dhcp_options.jmccoytesting_dhcp.id
 
-  depends_on = [ aws_vpc.jmccoytesting_opentofu_vpc ]
+  depends_on = [aws_vpc.jmccoytesting_opentofu_vpc]
 }

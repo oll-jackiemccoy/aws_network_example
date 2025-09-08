@@ -6,7 +6,7 @@ locals {
     aws_subnet.jmccoytesting_privatesubnet_a.id,
     aws_subnet.jmccoytesting_privatesubnet_b.id
   ]
-  sg_ids = [aws_security_group.jmccoytesting_ssm_sg.id]
+  sg_ids      = [aws_security_group.jmccoytesting_ssm_sg.id]
   region_name = data.aws_region.current.region
 }
 

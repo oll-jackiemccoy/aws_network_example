@@ -33,8 +33,8 @@ resource "aws_security_group" "resolver_outbound_sg" {
   }
 }
 resource "aws_route53_resolver_rule" "jmccoytesting_rslvrRule" {
-  domain_name          = "internal.jmccoy.com"                  # <-- hard-coded domain
-  name                 = "jmccoytesting_rslvrRule"                           # friendly name
+  domain_name          = "internal.jmccoy.com"     # <-- hard-coded domain
+  name                 = "jmccoytesting_rslvrRule" # friendly name
   rule_type            = "FORWARD"
   resolver_endpoint_id = aws_route53_resolver_endpoint.jmccoytesting_outbound.id
 

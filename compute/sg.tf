@@ -20,7 +20,7 @@ resource "aws_security_group" "jmccoytesting_ec2_linux" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags =  { Name = "jmccoytesting_ec2_linux" }
+  tags = { Name = "jmccoytesting_ec2_linux" }
 }
 
 # Windows instances — RDP from your IP only

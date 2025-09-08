@@ -4,6 +4,6 @@ resource "aws_vpc" "jmccoytesting_opentofu_vpc" {
   enable_dns_hostnames = true
 
   tags = merge(var.tags, {
-    Name    = "jmccoytesting_opentofu_vpc"
+    Name = "jmccoytesting_opentofu_vpc"
   })
 }
