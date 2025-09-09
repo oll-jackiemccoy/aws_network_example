@@ -23,7 +23,7 @@ on:
         default: ""
 
 permissions:
-  id-token: write   # needed for OIDC
+  id-token: write
   contents: read
 
 env:
@@ -63,8 +63,7 @@ jobs:
   apply:
     if: ${{ github.event.inputs.action == 'apply' }}
     runs-on: ubuntu-latest
-    # Optional: require manual approval via a protected environment named "prod"
-    environment: prod
+    environment: prod   # optional: require approval via protected environment
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -113,8 +112,7 @@ jobs:
   destroy:
     if: ${{ github.event.inputs.action == 'destroy' }}
     runs-on: ubuntu-latest
-    # Optional: require manual approval via a protected environment named "prod"
-    environment: prod
+    environment: prod   # optional protection
     steps:
       - name: Guard: require typed confirmation
         run: |
