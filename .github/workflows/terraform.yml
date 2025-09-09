@@ -14,16 +14,10 @@ on:
         type: choice
         options:
           - plan
-          - apply
-          - plan-destroy
-          - destroy
-      confirm_destroy:
-        description: "Type DESTROY to confirm (only when action=destroy)"
-        required: false
-        default: ""
+          - apply # requires manual approval in the 'prod' environment below
 
 permissions:
-  id-token: write
+  id-token: write   # needed for OIDC
   contents: read
 
 env:
@@ -34,68 +28,54 @@ jobs:
     if: ${{ github.event.inputs.action == 'plan' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
           aws-region: ${{ github.event.inputs.aws_region }}
-      - uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
-      - run: terraform fmt -check -recursive
-      - run: terraform init -input=false
-      - run: terraform validate
-      - run: terraform plan -input=false -lock=false -no-color
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -lock=false -no-color
 
   apply:
     if: ${{ github.event.inputs.action == 'apply' }}
     runs-on: ubuntu-latest
+    # Optional: require manual approval via a protected environment named "prod"
     environment: prod
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region }}
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-      - run: terraform init -input=false
-      - run: terraform apply -auto-approve -input=false -no-color
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  plan-destroy:
-    if: ${{ github.event.inputs.action == 'plan-destroy' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
           aws-region: ${{ github.event.inputs.aws_region }}
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-      - run: terraform init -input=false
-      - run: terraform plan -destroy -input=false -no-color
 
-  destroy:
-    if: ${{ github.event.inputs.action == 'destroy' }}
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - name: Guard: require typed confirmation
-        run: |
-          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
-            echo "You must type DESTROY in the confirm_destroy input to proceed."
-            exit 1
-          fi
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region }}
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
-      - run: terraform init -input=false
-      - run: terraform destroy -auto-approve -input=false -no-color
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform apply (auto-approve)
+        run: terraform apply -auto-approve -input=false -lock=false -no-color
