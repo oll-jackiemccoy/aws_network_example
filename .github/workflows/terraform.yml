@@ -1,0 +1,81 @@
+name: terraform-manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: "AWS region (e.g., us-east-1)"
+        required: true
+        default: "us-east-1"
+      action:
+        description: "What to run?"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply # requires manual approval in the 'prod' environment below
+
+permissions:
+  id-token: write   # needed for OIDC
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan:
+    if: ${{ github.event.inputs.action == 'plan' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
+          aws-region: ${{ github.event.inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -lock=false -no-color
+
+  apply:
+    if: ${{ github.event.inputs.action == 'apply' }}
+    runs-on: ubuntu-latest
+    # Optional: require manual approval via a protected environment named "prod"
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
+          aws-region: ${{ github.event.inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform apply (auto-approve)
+        run: terraform apply -auto-approve -input=false -lock=false -no-color
