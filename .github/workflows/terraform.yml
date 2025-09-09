@@ -14,11 +14,11 @@ on:
         type: choice
         options:
           - plan
-          - apply            # requires manual approval in the 'prod' environment below
+          - apply
           - plan-destroy
-          - destroy          # requires typed confirmation and 'prod' approval
+          - destroy
       confirm_destroy:
-        description: "Type DESTROY to confirm (only used when action=destroy)"
+        description: "Type DESTROY to confirm (only when action=destroy)"
         required: false
         default: ""
 
@@ -63,7 +63,7 @@ jobs:
   apply:
     if: ${{ github.event.inputs.action == 'apply' }}
     runs-on: ubuntu-latest
-    environment: prod   # optional: require approval via protected environment
+    environment: prod
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,70 +73,3 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
           aws-region: ${{ github.event.inputs.aws_region }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Terraform apply (auto-approve)
-        run: terraform apply -auto-approve -input=false -lock=false -no-color
-
-  plan-destroy:
-    if: ${{ github.event.inputs.action == 'plan-destroy' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Terraform plan (destroy)
-        run: terraform plan -destroy -input=false -lock=false -no-color
-
-  destroy:
-    if: ${{ github.event.inputs.action == 'destroy' }}
-    runs-on: ubuntu-latest
-    environment: prod   # optional protection
-    steps:
-      - name: Guard: require typed confirmation
-        run: |
-          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
-            echo "You must type DESTROY in the confirm_destroy input to proceed."
-            exit 1
-          fi
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Terraform destroy (auto-approve)
-        run: terraform destroy -auto-approve -input=false -lock=false -no-color
