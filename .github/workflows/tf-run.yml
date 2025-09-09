@@ -1,0 +1,104 @@
+name: tf-run-command
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: "us-east-1"
+      tf_dir:
+        description: "Terraform working directory (folder with your .tf files)"
+        required: true
+        default: "."
+      workspace:
+        description: "Terraform workspace (blank = default)"
+        required: false
+        default: ""
+      tf_cmd:
+        description: "Terraform command (e.g., 'state list', 'output', 'plan -refresh-only')"
+        required: true
+        default: "state list"
+      confirm_destroy:
+        description: "Type DESTROY to allow any command containing 'destroy'"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
+          aws-region: ${{ github.event.inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Init (reconfigure backend)
+        working-directory: ${{ github.event.inputs.tf_dir }}
+        run: terraform init -input=false -reconfigure
+
+      - name: Select/Create workspace
+        if: ${{ github.event.inputs.workspace != '' }}
+        working-directory: ${{ github.event.inputs.tf_dir }}
+        run: |
+          terraform workspace select "${{ github.event.inputs.workspace }}" \
+          || terraform workspace new "${{ github.event.inputs.workspace }}"
+
+      - name: Safety check for destroy
+        run: |
+          cmd="${{ github.event.inputs.tf_cmd }}"
+          if echo "$cmd" | grep -qi '\bdestroy\b'; then
+            if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
+              echo "Refusing to run a destroy command without confirm_destroy=DESTROY"
+              exit 1
+            fi
+          fi
+
+      - name: Show where we are (debug)
+        working-directory: ${{ github.event.inputs.tf_dir }}
+        run: |
+          echo "Workspace:"
+          terraform workspace show || true
+          echo
+          echo "State has these resources (if any):"
+          terraform state list || echo "No resources in state."
+
+      - name: Run Terraform command
+        id: tf
+        working-directory: ${{ github.event.inputs.tf_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo ">> terraform ${{ github.event.inputs.tf_cmd }}"
+          terraform ${{ github.event.inputs.tf_cmd }}
+
+      - name: Summarize (outputs if any)
+        if: ${{ !cancelled() }}
+        working-directory: ${{ github.event.inputs.tf_dir }}
+        run: |
+          {
+            echo "## Terraform Command Summary"
+            echo ""
+            echo "- **Dir**: \`${{ github.event.inputs.tf_dir }}\`"
+            echo "- **Workspace**: \`${{ github.event.inputs.workspace || 'default' }}\`"
+            echo "- **Command**: \`terraform ${{ github.event.inputs.tf_cmd }}\`"
+            echo ""
+            echo "### Outputs (if defined)"
+            terraform output || echo "_No outputs or not applicable_"
+          } >> "$GITHUB_STEP_SUMMARY"
