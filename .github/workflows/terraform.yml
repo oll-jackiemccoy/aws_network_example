@@ -12,7 +12,11 @@ on:
         required: true
         default: "plan"
         type: choice
-        options: [plan, apply, plan-destroy, destroy]
+        options:
+          - plan
+          - apply
+          - plan-destroy
+          - destroy
       confirm_destroy:
         description: "Type DESTROY to confirm (only when action=destroy)"
         required: false
@@ -27,15 +31,14 @@ env:
 
 jobs:
   plan:
-    # default to 'plan' if inputs are missing (e.g., on Re-run)
-    if: ${{ (github.event.inputs.action || 'plan') == 'plan' }}
+    if: ${{ github.event.inputs.action == 'plan' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
+          aws-region: ${{ github.event.inputs.aws_region }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
@@ -45,7 +48,7 @@ jobs:
       - run: terraform plan -input=false -lock=false -no-color
 
   apply:
-    if: ${{ (github.event.inputs.action || '') == 'apply' }}
+    if: ${{ github.event.inputs.action == 'apply' }}
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -53,7 +56,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
+          aws-region: ${{ github.event.inputs.aws_region }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
@@ -61,14 +64,14 @@ jobs:
       - run: terraform apply -auto-approve -input=false -no-color
 
   plan-destroy:
-    if: ${{ (github.event.inputs.action || '') == 'plan-destroy' }}
+    if: ${{ github.event.inputs.action == 'plan-destroy' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
+          aws-region: ${{ github.event.inputs.aws_region }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
@@ -76,13 +79,13 @@ jobs:
       - run: terraform plan -destroy -input=false -no-color
 
   destroy:
-    if: ${{ (github.event.inputs.action || '') == 'destroy' }}
+    if: ${{ github.event.inputs.action == 'destroy' }}
     runs-on: ubuntu-latest
     environment: prod
     steps:
       - name: Guard: require typed confirmation
         run: |
-          if [ "${{ github.event.inputs.confirm_destroy || '' }}" != "DESTROY" ]; then
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
             echo "You must type DESTROY in the confirm_destroy input to proceed."
             exit 1
           fi
@@ -90,7 +93,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::340752798936:role/jmccoy-github-role
-          aws-region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
+          aws-region: ${{ github.event.inputs.aws_region }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
